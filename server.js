@@ -78,14 +78,10 @@ function isFakeIp(ip, list) {
         return true;
     }
     for(var i in list) {
-		var fi = list[i];
-		if(fi.indexOf("/")) {
-			if(inSubNet(ip[0], list[i])){
-				return true;
-			}
-
-		}
-        else if(ip[0] == list[i]) {
+        if(ip[0] == list[i]) {
+            return true;
+        }
+	if(inSubNet(ip[0], list[i])) {
             return true;
         }
     }
@@ -136,21 +132,25 @@ function queryDNSwithUDP(message, address, port, cb) {
             send: function (callback) {
                 client.send(message, 0, message.length, port, address, function (err, bytes) {
                 });
-                callback(null);
+                callback(null, null);
             },
             receive: function (callback) {
                 client.on("message", function (message, remote) {
                     if(!isFakeIp(getIpAddress(message), fakeIpList)) {
                         callback(null, message);
+                    } else {
+                        callback(null, null);
                     }
                 });
                 client.on("error", function (err) {
-		    callback(null);
+		    callback(null, null);
                 });
             }
         }, function (err, results) {
             client.close();
-            cb(results.receive);
+            if(results) {
+                cb(results.receive);
+            }
         }
     );
 }
