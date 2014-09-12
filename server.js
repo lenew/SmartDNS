@@ -105,7 +105,7 @@ function getIpAddress(buffer) {
 
 function queryDNSs(message, cb) {
     var dataCallback;
-    async.detect(DNS, function (item, callback) {
+    async.detectSeries(DNS, function (item, callback) {
         if(item.type == 'UDP' || (!item.type)) {
             queryDNSwithUDP(message, item.ip, (item.port ? item.port : 53), function (data) {
                 dataCallback = data;
@@ -141,15 +141,15 @@ function queryDNSwithUDP(message, address, port, cb) {
             receive: function (callback) {
                 client.on("message", function (message, remote) {
                     if(!isFakeIp(getIpAddress(message), fakeIpList)) {
-                        client.close();
                         callback(null, message);
                     }
                 });
                 client.on("error", function (err) {
-
+		    callback(null);
                 });
             }
         }, function (err, results) {
+            client.close();
             cb(results.receive);
         }
     );
