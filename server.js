@@ -60,7 +60,7 @@ function ip2long(ip){
         return iplong;
     }
     else return -1;
-};
+}
 
 function inSubNet(ip, subnet)
 {   
@@ -71,7 +71,8 @@ function inSubNet(ip, subnet)
         return (long_ip > base_ip) && (long_ip < base_ip + freedom - 1);
     }
     else return false;
-};
+}
+
 function isFakeIp(ip, list) {
     if(ip.length == 0) {
         return true;
@@ -79,7 +80,9 @@ function isFakeIp(ip, list) {
     for(var i in list) {
 		var fi = list[i];
 		if(fi.indexOf("/")) {
-			return inSubNet(ip[0], list[i]);
+			if(inSubNet(ip[0], list[i])){
+				return true;
+			}
 
 		}
         else if(ip[0] == list[i]) {
