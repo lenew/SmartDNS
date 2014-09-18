@@ -81,7 +81,7 @@ function isFakeIp(ip, list) {
         if(ip[0] == list[i]) {
             return true;
         }
-	if(inSubNet(ip[0], list[i])) {
+        if(inSubNet(ip[0], list[i])) {
             return true;
         }
     }
@@ -104,16 +104,29 @@ function queryDNSs(message, cb) {
     async.detectSeries(DNS, function (item, callback) {
         if(item.type == 'UDP' || (!item.type)) {
             queryDNSwithUDP(message, item.ip, (item.port ? item.port : 53), function (data) {
-                dataCallback = data;
-                callback(data);
+                if(data) {
+                        dataCallback = data;
+                        callback(true);
+                } else {
+                        callback(false);
+                }
             });
         } else if (item.type == 'TCP') {
             queryDNSwithTCP(message, item.ip, (item.port ? item.port : 53), function (data) {
-                dataCallback = data;
-                callback(data);
+                if(data) {
+                        dataCallback = data;
+                        callback(true);
+                } else {
+                        callback(false);
+                }
             });
         }
     }, function (results) {
+        if(!results) {
+            console.log("Error in request..");
+            console.log("-------------------------------------------");
+            return;
+        }
         var now = new Date();
         console.log(now.toLocaleDateString() + ' ' + now.toLocaleTimeString());
         console.log('Res from ' + results.ip + ' ' + (results.type ? results.type : 'UDP'));
@@ -132,7 +145,7 @@ function queryDNSwithUDP(message, address, port, cb) {
             send: function (callback) {
                 client.send(message, 0, message.length, port, address, function (err, bytes) {
                 });
-                callback(null, null);
+                callback(null);
             },
             receive: function (callback) {
                 client.on("message", function (message, remote) {
@@ -143,7 +156,7 @@ function queryDNSwithUDP(message, address, port, cb) {
                     }
                 });
                 client.on("error", function (err) {
-		    callback(null, null);
+                    callback(null, null);
                 });
             }
         }, function (err, results) {
@@ -171,7 +184,7 @@ function queryDNSwithTCP(message, address, port, cb) {
         cb(data);
     });
     client.on('error', function (err) {
-
+        cb(null);
     });
 }
 
