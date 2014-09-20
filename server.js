@@ -103,7 +103,7 @@ function queryDNSs(message, cb) {
     var dataCallback;
     async.detectSeries(DNS, function (item, callback) {
         if(item.type == 'UDP' || (!item.type)) {
-            queryDNSwithUDP(message, item.ip, (item.port ? item.port : 53), function (data) {
+            queryDNSwithUDP(message, item, (item.port ? item.port : 53), function (data) {
                 if(data) {
                         dataCallback = data;
                         callback(true);
@@ -123,7 +123,7 @@ function queryDNSs(message, cb) {
         }
     }, function (results) {
         if(!results) {
-            console.log("Error in request..");
+            console.log("Error in request [",getDomain(message),"],results:",results);
             console.log("-------------------------------------------");
             return;
         }
@@ -139,33 +139,42 @@ function queryDNSs(message, cb) {
     });
 }
 
-function queryDNSwithUDP(message, address, port, cb) {
+function queryDNSwithUDP(message, dns, port, cb) {
     var client = dgram.createSocket('udp4');
-    async.series({
-            send: function (callback) {
-                client.send(message, 0, message.length, port, address, function (err, bytes) {
-                });
-                callback(null);
-            },
-            receive: function (callback) {
-                client.on("message", function (message, remote) {
-                    if(!isFakeIp(getIpAddress(message), fakeIpList)) {
-                        callback(null, message);
-                    } else {
-                        callback(null, null);
-                    }
-                });
-                client.on("error", function (err) {
-                    callback(null, null);
-                });
-            }
-        }, function (err, results) {
-            client.close();
-            if(results) {
-                cb(results.receive);
-            }
-        }
-    );
+    var address = dns.ip;
+        var timer = setTimeout(function(){
+                client.close();
+                cb(null);
+        },5000);
+    client.send(message, 0, message.length, port, address, function(err, bytes) {
+                if(err) {
+                        console.log("[UDP ERROR]:", err);
+                        clearTimeout(timer);
+                        client.close();
+                }
+    })
+    client.on("error", function(err) {
+                console.log("[UDP ERROR]:", err);
+                clearTimeout(timer);
+                client.close();
+                cb(null);
+    })
+    client.on("message", function(message, remote) {
+                                clearTimeout(timer);
+                client.close();
+                if(dns.trust) {
+                        if(message) {
+                                cb(message);
+                                return;
+                        }
+                }else if(!isFakeIp(getIpAddress(message), fakeIpList)) {
+                        if(message) {
+                                cb(message);
+                                return;
+                        }
+                }
+                cb(null);
+    })
 }
 
 function queryDNSwithTCP(message, address, port, cb) {
@@ -184,8 +193,13 @@ function queryDNSwithTCP(message, address, port, cb) {
         cb(data);
     });
     client.on('error', function (err) {
+        console.log('tcp error');
         cb(null);
     });
+
+    setTimeout(function() {
+        if (client && client.close) client.close();
+    }, 5000);
 }
 
 function queryDNSwithProxy(message) {
